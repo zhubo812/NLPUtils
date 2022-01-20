@@ -11,7 +11,7 @@ public class FileProcesserTest {
 	@Test
 	public void findWordTester() {
 		FileProcesser sl = new FileProcesser();
-		String word= "红军树";
+		String word= "八车";
 		String dir= "E:\\data\\lex\\ycy\\城市信息大全词性标记\\四川";
 		sl.findWord(dir, word);
 	}

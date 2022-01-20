@@ -44,14 +44,14 @@ public class MySQLHelper {
 		}
     }
     
-    public MySQLHelper(String db, String usrname, String psw) {
+    public MySQLHelper(String IP,String db, String usrname, String psw) {
    	 try {
 			// 注册 JDBC 驱动
 			Class.forName(JDBC_DRIVER);
   
 			// 打开链接
 			System.out.println("连接数据库...");
-			conn = DriverManager.getConnection(db,usrname,psw);
+			conn = DriverManager.getConnection(String.format("jdbc:mysql://%s:3306/%s?characterEncoding=UTF-8", IP,db),usrname,psw);
   
 			// 执行查询
 			System.out.println(" 实例化Statement对象...");
@@ -73,10 +73,8 @@ public class MySQLHelper {
     public List<Integer> getDupID(String sql) {
     	HashSet<String> set = new HashSet<String>();
     	List<Integer> idList = new ArrayList<Integer>();
-    	
         try{
            
-            
             rs = stmt.executeQuery(sql);
          // 展开结果集数据库
             while(rs.next()){

@@ -1,6 +1,8 @@
 package cn.edu.bhu.lang.db;
 
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 import org.jsoup.nodes.Document;
@@ -23,10 +25,102 @@ public class MySQLTest {
 		mySQLHelper.update(idList);
 		mySQLHelper.close();
 	}
+	
+	@Test
+	public void deleteDuplicationTester2() throws SQLException {
+		String sql = "select * from annotation where word in (select  word from   annotation group by   word having count(word) >1) AND status >-1 ORDER BY word";
+		MySQLHelper mySQLHelper = new MySQLHelper("192.168.1.106", "lexicon", "root", "admin");
+		List<Integer> idList = mySQLHelper.getDupID(sql);
+
+		mySQLHelper.update(idList);
+		mySQLHelper.close();
+	}
 
 	@Test
 	public void updateAnnotationByBaidu() throws SQLException, UnsupportedEncodingException {
-		String sql = "select id, word from annotation where status>0 and id >758468";
+		String sql = "select id, word from annotation where status>-1 and id >770840";
+		String tag = "dd[class=lemmaWgt-lemmaTitle-title J-lemma-title]";
+		HashMap<Integer, String> yMap = new HashMap<Integer, String>();
+		HashSet<Integer> nMap = new HashSet<Integer>();
+
+//		String url = "https://baike.baidu.com/item/员相";
+		MySQLHelper mySQLHelper = new MySQLHelper();
+
+		ResultSet rs = mySQLHelper.getDBResult(sql);
+		HtmlHelper hl = new HtmlHelper();
+		PreparedStatement stmt = null;
+		
+		mySQLHelper.getConn().setAutoCommit(false);
+		int counter = 0;
+		// 展开结果集数据库
+		while (rs.next()) {
+			// 通过字段检索
+
+			int id = rs.getInt("id");
+			String word = rs.getString("word");
+			String url = hl.getBaiduBaikeUrl(word);
+			Document doc = hl.getDocument(url);
+			
+			if(doc == null) {
+				String upsql = "update annotation set status = 0 where id = ?";
+				stmt = mySQLHelper.getConn().prepareStatement(upsql);
+				stmt.setInt(1, id);
+				int result = stmt.executeUpdate();// 返回值代表收到影响的行数
+				if (result > 0) {
+					System.out.println(id + "修改成功");
+				} else {
+					System.out.println(id + "修改失败");
+				}
+				continue;
+			}
+			
+			boolean bool = hl.containsTag(doc, tag);
+			
+			if (bool) {
+
+				String para = hl.getBaikeParaphrase(doc);
+//				para = new String(para.getBytes(),"ISO8859_1"); 
+				
+				yMap.put(id, para);
+				if(yMap.size()==100) {
+					String upsql = "update annotation set paraphrase=? where id = ?";
+				try {
+					stmt = mySQLHelper.getConn().prepareStatement(upsql);
+					for(int key : yMap.keySet()) {
+						stmt.setInt(2, key);
+						stmt.setString(1, yMap.get(key));
+						stmt.addBatch();
+					}
+					
+//					int result = stmt.executeUpdate();// 返回值代表收到影响的行数
+					stmt.executeBatch();
+				    mySQLHelper.conn.commit();
+					yMap.clear();
+
+				} catch (Exception e) {
+//					e.printStackTrace();
+					continue;
+				} 
+				}
+			}else {
+				String upsql2 = "update annotation set status = -1 where id = ?";
+				nMap.add(id);
+				stmt = mySQLHelper.getConn().prepareStatement(upsql2);
+				stmt.setInt(1, id);
+				int result = stmt.executeUpdate();// 返回值代表收到影响的行数
+				if (result > 0) {
+					System.out.println(id + "修改成功");
+				} else {
+					System.out.println(id + "修改失败");
+				}
+			}
+		}
+		mySQLHelper.close();
+	}
+	
+	@Test
+	public void updateAnnotationByBaidu2() throws SQLException, UnsupportedEncodingException {
+		String sql = "select id, word from annotation where status>0 and id >771347";
 		String tag = "dd[class=lemmaWgt-lemmaTitle-title J-lemma-title]";
 
 //		String url = "https://baike.baidu.com/item/员相";
